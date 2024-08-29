@@ -1,0 +1,255 @@
+﻿@page "/AddEmployee"
+@using CRUD.Data
+@using PdfiumViewer;
+@using System.Drawing;
+@* @using iText.Kernel.Pdf;
+@using iText.Layout;
+@using iText.Layout.Element; *@ 
+@inject EmployeeService employeeService
+@inject NavigationManager NavigationManager
+
+
+
+<h2>Add Employee</h2>
+<hr />
+
+<form>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="form-group">
+                <label for="FirstName" class="control-label">FirstName</label>
+                <input form="FirstName" class="form-control" @bind="@obj.FirstName" />
+            </div>
+            <div>
+                <label for="LastName" class="control-label">LastName</label>
+                <input form="LastName" class="form-control" @bind="@obj.LastName" />
+            </div>
+            <div class="form-group">
+                <label for="Age" class="control-label">Age</label>
+                <input form="Age" class="form-control" @bind="@obj.Age" />
+
+            </div>
+            <label for="Date" class="control-label">Date : </label>
+            <input type="date" @bind="@obj.Date" class="col-md-3" />
+
+            <div>
+                <label for="Fruit" class="control-label">Fruit :</label>
+
+                @foreach (var item in obj.items)
+                {
+                    
+                        <label>
+                            <input type="checkbox" @bind="item.IsSelected" /> @item.Name
+                        </label>
+                }
+            </div>
+
+
+            <dīv>
+               
+                <label for="Veg" class="control-label" >Veg: </label>
+                <select @bind="@obj.Veg" class="control-label" style="">
+                    <option value=""></option>
+                    <option value="Tamato">Tamato</option>
+                    <option value="Onion">Onion</option>
+                </select>
+                
+            </dīv>
+                        
+
+            <div>
+                <label for="Gender" class="control-label">Gender</label>
+                @foreach (var option in new List<string> { "Male", "Female" })
+                {
+                    <label class="mr-3">
+                        <input type="radio" class="mr-1" style="margin:5px" name="options" value="@option" @onclick="() => SetSelected(option)" />
+                        @option
+                    </label>
+                }
+            </div>
+            <br />
+
+            <div style="margin-left:20px" class="col-md-6">
+                <label for="Image" class="control-label">Image Upload</label>
+                <InputFile OnChange="HandleFileSelection" />
+            </div>
+            <div style="margin-left:20px" class="col-md-6">
+                <label for="Document" class="control-label">Document Upload</label>
+                <InputFile OnChange="HandleFileUploadAsync" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+               
+
+                <input type="button" class="btn btn-primary" @onclick="GeneratePDF" value="PDF" /> 
+                <input type="button" class="btn btn-primary" @onclick="@CreateEmployee" value="Submit" />
+                <input type="button" class="btn btn-primary" @onclick="@Cancel" value="Cancel" />
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+    private CRUD.Data.Employee obj = new CRUD.Data.Employee();
+
+         //*******************                 Image Browser                       *****************************/
+    private IBrowserFile selectedFile;
+    private string base64Image;
+
+    // Define properties for other form fields
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        base64Image = await ConvertImageToBase64(selectedFile);
+    }
+
+    private async Task<string> ConvertImageToBase64(IBrowserFile file)
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            await file.OpenReadStream().CopyToAsync(memoryStream);
+            byte[] buffer = memoryStream.ToArray();
+            return $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+    }
+
+
+
+
+    private async Task SaveImageToDatabase(byte[] imageData)
+    {
+        // Perform database operations here
+        obj.Photo = imageData;
+        // Example of awaiting a database operation
+        await Task.CompletedTask;
+    }
+
+
+                  //**************************            PDF Browser       *********************          /
+
+    private IBrowserFile inputFile;
+    //private string base64Image;
+
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    {
+        inputFile = e.File;
+
+    }
+
+    private byte[] ConvertPdfToByteArray(Stream fileStream)
+    {
+
+        using (var document = PdfDocument.Load(fileStream))
+        {
+            using (var ms = new MemoryStream())
+            {
+                document.Save(ms);
+                return ms.ToArray();
+            }
+        }
+    }
+
+  
+
+    private Task SavePdfToDatabase(byte[] pdfData)
+    {
+        // Convert byte array to Base64 string
+        string base64String = Convert.ToBase64String(pdfData);
+
+        // Assign the Base64 string to obj.Doc
+        obj.Pdf = pdfData;
+
+        // Placeholder for actual database interaction
+        return Task.CompletedTask;
+    }
+
+
+
+
+    protected async void CreateEmployee()
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            await inputFile.OpenReadStream(int.MaxValue).CopyToAsync(memoryStream);
+            //var pdfByteArray = ConvertPdfToByteArray(memoryStream);
+            await SavePdfToDatabase(memoryStream.ToArray());
+        }
+
+        
+
+        if (!string.IsNullOrEmpty(base64Image))
+        {
+            // Convert the Base64 string to a byte array
+            byte[] imageData = Convert.FromBase64String(base64Image.Split(',')[1]);
+
+            // Set the image data in the Equipment object
+            obj.Photo = imageData;
+
+            // Call the service to save the safety data
+            await employeeService.InsertEmployeeAsync(obj);
+            NavigationManager.NavigateTo("Employee");
+        }
+        else
+        {
+            // Handle the case when no image is uploaded
+        }
+
+    }
+    protected async void Cancel()
+    {
+        NavigationManager.NavigateTo("Employee");
+    }
+
+    void SetSelected(string option)
+    {
+        obj.Gender = option;
+
+        var selectedItems = obj.items.Where(i => i.IsSelected).ToList();
+        foreach (var selectedItem in selectedItems)
+        {
+            obj.Fruit += "," + selectedItem.Name;
+        }
+ 
+    }
+
+
+
+                  // ***********    Pdf Generate    *******************
+
+    private void GeneratePDF()
+    {
+        // using (var memoryStream = new MemoryStream())
+        // {
+        //     var writer = new PdfWriter(memoryStream);
+        //     var pdf = new PdfDocument(writer);
+        //     var document = new Document(pdf);
+
+        //     document.Add(new iText.Layout.Element.Paragraph($"FirstName: {obj.FirstName}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Department: {obj.LastName}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Name of Supervisor: {obj.Age}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Today Date: {obj.Date}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Fruit: {string.Join(" , ", obj.items.Where(i => i.IsSelected).Select(i => i.Name))}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Blood Group: {obj.Veg}"));
+        //     document.Add(new iText.Layout.Element.Paragraph($"Gender: {obj.Gender}"));
+
+        //     document.Close();
+
+        //     var pdfData = memoryStream.ToArray();
+        //     var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "pdfs");
+        //     Directory.CreateDirectory(path);
+        //     var fileName = $"CRUDPDF_{Guid.NewGuid()}.pdf";
+        //     var filePath = Path.Combine(path, fileName);
+        //     File.WriteAllBytes(filePath, pdfData);
+
+            
+        // }
+    }
+}
+ 
+
+  

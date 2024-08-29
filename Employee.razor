@@ -1,0 +1,83 @@
+﻿@page "/Employees"
+@using CRUD.Data
+@inject EmployeeService employeeService
+
+<NavLink class="nav-link" href="AddEmployee">
+    <span class="oi oi-plus" aria-hidden="true">Add New</span>
+
+</NavLink>
+
+<h1>Employee Info</h1>
+@if (EmpObj is null)
+{
+    <p><em>Loading... !</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Age</th>
+                <th>Date</th>
+                <th>Fruit</th>
+                <th>Veg</th>
+                <th>Gender</th>
+                <th>Pdf</th>
+                <th>Photo</th>
+                <th>Edit</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var emp in EmpObj)
+            {
+                <tr>
+                    <td>@emp.Id</td>
+                    <td>@emp.FirstName</td>
+                    <td>@emp.LastName</td>
+                    <td>@emp.Age</td>
+                    <td>@emp.Date</td>
+                    <td>@emp.Fruit</td>
+                    <td>@emp.Veg</td>
+                    <td>@emp.Gender</td>
+                    <td>
+                        <img src="Image\images.jpg" style="height: 50px; width: 50px;"/>
+                        
+                    </td>
+                    <td>
+                        @if (@emp.Photo != null && @emp.Photo.Length > 0)
+                        {
+                        <td><img src="@($"data:image/png;base64,{Convert.ToBase64String(@emp.Photo)}")" style="width: 50px; height: 50px;" /></td>
+                        }
+                        else
+                        {
+                        <td>No Image Available</td>
+                        }
+                    </td>
+                    <td>
+                        <a class="nav-link" href="Edit/@emp.Id">
+                            <span class="oi oi-pencil" aria-hidden="true">Edit</span>
+                        </a>
+                    </td>
+                    <td>
+                        <a class="nav-link" href="Delete/@emp.Id">
+                            <span class="oi oi-trash" aria-hidden="true">Delete</span>
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    List<CRUD.Data.Employee> EmpObj;
+    protected override async Task OnInitializedAsync()
+    {
+        EmpObj = await Task.Run(() => employeeService.GetAllEmployeesAsync());
+    }
+}
